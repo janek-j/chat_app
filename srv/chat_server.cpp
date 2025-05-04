@@ -5,6 +5,7 @@
 
 int main() {
   ChatServer my_server(80);
+  my_server.start_server();
 
   std::cout << "Testing chat server." << std::endl;
 

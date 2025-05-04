@@ -33,6 +33,9 @@ SOCKET ChatServer::get_server_socket() {
 }
 
 void ChatServer::start_server() {
+
+    std::cout << "Starting server on port: " << get_port() << std::endl;
+
     WSAData wsaData;
 
     int result;
@@ -71,6 +74,7 @@ void ChatServer::start_server() {
         WSACleanup();
         return;
     }
+
     set_running(true);
     std::cout << "Server started at port: " << server_port << std::endl;
 }
@@ -88,4 +92,48 @@ void ChatServer::stop_server() {
 
 ChatServer::~ChatServer() {
   stop_server();
+}
+
+void ChatServer::accept_clients() {
+  std::cout << "Waiting for clients. " << std::endl;
+
+   while (get_running()) {
+     sockaddr_in client_addr;
+     int client_len = sizeof(client_addr);
+     SOCKET client_socket = accept(server_socket, (SOCKADDR*)&client_addr, &client_len);
+     if (client_socket == INVALID_SOCKET) {
+       std::cerr << "Accept in ChatServer::accept_clients(). " << WSAGetLastError() << std::endl;
+       continue;
+     }
+     std::cout << "Client connected." << std::endl;
+     client_sockets.push_back(client_socket);
+
+   }
+
+}
+
+void ChatServer::handle_client(SOCKET cli_sock) {
+    char buffer[1024];
+
+    while (get_running()) {
+        memset(buffer, 0, sizeof(buffer));
+        int bytes_received = recv(cli_sock, buffer, sizeof(buffer), 0);
+
+        if (bytes_received <= 0) {
+            std::cout << "Client disconnected." << std::endl;
+            closesocket(cli_sock);
+            break;
+        }
+
+        std::string msg(buffer);
+        std::cout << "Received: " << msg << std::endl;
+
+        broadcast_message(msg);
+    }
+}
+
+void ChatServer::broadcast_message(const std::string &message) {
+    for (SOCKET sock : client_sockets) {
+        send(sock, message.c_str(), message.length(), 0);
+    }
 }
